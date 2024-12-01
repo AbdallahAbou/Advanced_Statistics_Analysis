@@ -1,77 +1,161 @@
-# Advanced Statistics Analysis
+# Advanced Statistical Analysis
 
-The main goals of this project are to clean, analyze, and visualize data to answer various statistical questions.
+A comprehensive Python framework for statistical hypothesis testing, inference, and data analysis with emphasis on proper methodology and effect size reporting.
 
-## Project Structure:
+## Features
 
-```
-.
-├── data
-│   ├── clean
-│   │   └── cleaned_data.xlsx
-│   └── raw
-│       └── Urliste_Datenerhebung_WS23_24.xlsx
-├── notebooks
-│   ├── data_cleaning_notebook.ipynb
-│   └── statistical_study_notebook.ipynb
-├── src
-│   ├── configs
-│   │   ├── __init__.py
-│   │   └── config.py
-│   ├── scripts
-│   │   ├── __init__.py
-│   │   ├── data_processor.py
-│   │   └── statistical_analysis.py
-│   ├── __init__.py
-│   └── data_cleaning.py
-├── .gitignore
-├── README.md
-└── requirements.txt
+### Hypothesis Testing
 
-```
+| Category | Tests |
+|----------|-------|
+| **Parametric** | Student's t-test, Welch's t-test, Paired t-test, One-way ANOVA |
+| **Non-parametric** | Mann-Whitney U, Kruskal-Wallis H, Wilcoxon Signed-Rank |
+| **Correlation** | Pearson, Spearman, Kendall's tau |
+| **Normality** | Shapiro-Wilk, Kolmogorov-Smirnov, Anderson-Darling |
 
-## Setup:
+### Statistical Inference
 
-1\. Clone the repository:
+- Confidence intervals (parametric and bootstrap)
+- Power analysis and sample size calculation
+- Effect size computation (Cohen's d, η², r)
+
+## Installation
 
 ```bash
-git clone https://github.com/AbdallahAbou/Advanced_Statistics_Analysis.git
-```
-
-2\. Navigate to the project directory:
-
-```bash
-cd Advanced_Statistics_Analysis
-```
-
-3\. Install dependencies:
-
-```bash
+git clone https://github.com/AbdallahAbou/Advanced_Statistical_Analysis.git
+cd Advanced_Statistical_Analysis
 pip install -r requirements.txt
 ```
 
-## Usage:
+## Quick Start
 
-- Data Processing and Cleaning:
+### Hypothesis Testing
 
- Run data_cleaning.py to clean and preprocess the data, a new Excel file should be created in ./data/clean/.
+```python
+from src.tests import TTest, MannWhitneyU, ShapiroWilk
 
-```bash
-python src/data_cleaning.py
+# Independent samples t-test
+group1 = [23, 25, 28, 29, 31, 35]
+group2 = [31, 32, 35, 38, 42, 45]
+
+ttest = TTest(equal_var=False)  # Welch's t-test
+result = ttest.test(group1, group2)
+
+print(result)
+# Welch's t-test
+#   Statistic: -3.4821
+#   P-value: 0.0062
+#   α: 0.05
+#   Decision: reject H₀
+#   Effect size: -1.9438
+#   95% CI: [-18.23, -3.77]
 ```
 
-- Analysis and Visualization:
+### Check Assumptions
 
- Use the Jupyter notebook statistical_study.ipynb for data analysis and visualization.
+```python
+# Test normality before parametric tests
+normality = ShapiroWilk()
+print(normality.test(group1))
 
-```bash
-jupyter notebook notebooks/statistical_study.ipynb
+# If non-normal, use non-parametric alternative
+if result.p_value > 0.05:
+    mann_whitney = MannWhitneyU()
+    result = mann_whitney.test(group1, group2)
 ```
 
-## Contributing:
+### Power Analysis
 
-Contributions are welcome! Please submit a pull request or open an issue to discuss any changes.
+```python
+from src.inference import power_analysis, sample_size_ttest
 
-## License:
-    
-This project is licensed under the MIT License - see the LICENSE file for details.
+# What power do we have?
+power = power_analysis(effect_size=0.5, n=30)
+print(f"Power: {power:.2%}")
+
+# How many subjects needed?
+n = sample_size_ttest(effect_size=0.5, power=0.80)
+print(f"Need {n} per group")
+```
+
+### Confidence Intervals
+
+```python
+from src.inference import confidence_interval_mean, bootstrap_ci
+import numpy as np
+
+data = [23, 25, 28, 30, 32, 35, 100]  # Note outlier
+
+# Parametric CI
+ci = confidence_interval_mean(data, confidence=0.95)
+print(f"Parametric 95% CI: [{ci[0]:.2f}, {ci[1]:.2f}]")
+
+# Bootstrap CI (robust to outliers)
+ci_boot = bootstrap_ci(data, np.median, method='bca')
+print(f"Bootstrap 95% CI for median: [{ci_boot[0]:.2f}, {ci_boot[1]:.2f}]")
+```
+
+## Project Structure
+
+```
+src/
+├── tests/
+│   ├── parametric.py      # t-test, ANOVA
+│   ├── nonparametric.py   # Mann-Whitney, Kruskal-Wallis
+│   ├── correlation.py     # Pearson, Spearman, Kendall
+│   └── normality.py       # Shapiro-Wilk, KS, Anderson-Darling
+├── inference/
+│   ├── confidence.py      # CI calculations, bootstrap
+│   └── power.py           # Power analysis, sample size
+├── scripts/
+│   ├── statistical_analysis.py
+│   └── data_processor.py
+└── configs/
+    └── config.py
+```
+
+## Test Selection Guide
+
+```
+                    ┌─────────────────────┐
+                    │ Comparing Groups?   │
+                    └─────────┬───────────┘
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+        2 groups        >2 groups       Correlation
+              │               │               │
+     ┌────────┴────────┐     │        ┌──────┴──────┐
+     ▼                 ▼     ▼        ▼             ▼
+Independent      Paired   ANOVA    Linear    Monotonic
+     │               │       │        │             │
+     ▼               ▼       ▼        ▼             ▼
+┌─────────┐   ┌──────────┐  │   ┌─────────┐  ┌──────────┐
+│Normal?  │   │Normal    │  │   │Pearson  │  │Spearman  │
+│         │   │diff?     │  │   └─────────┘  │Kendall   │
+└────┬────┘   └────┬─────┘  │                └──────────┘
+ Yes │ No      Yes │ No     │
+     ▼             ▼        ▼
+┌────────┐   ┌─────────┐ ┌────────────┐
+│t-test  │   │Paired   │ │Kruskal-    │
+│        │   │t-test   │ │Wallis      │
+└────────┘   └─────────┘ └────────────┘
+     │             │
+     ▼             ▼
+┌────────┐   ┌──────────┐
+│Mann-   │   │Wilcoxon  │
+│Whitney │   │Signed-   │
+└────────┘   │Rank      │
+             └──────────┘
+```
+
+## Effect Size Interpretation
+
+| Measure | Small | Medium | Large |
+|---------|-------|--------|-------|
+| Cohen's d | 0.2 | 0.5 | 0.8 |
+| η² (eta-squared) | 0.01 | 0.06 | 0.14 |
+| r (correlation) | 0.1 | 0.3 | 0.5 |
+
+## License
+
+MIT License
